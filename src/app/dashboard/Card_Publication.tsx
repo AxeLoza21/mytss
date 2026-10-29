@@ -30,10 +30,11 @@ export default function Card_Publication(
     const checkPath = pathname.substring(0,21);
     const router = useRouter();
 
-    const {id, reposts, fechaPublicacion, nivelVacio} = infoPublication;
+    const {id, reposts, fechaPublicacion} = infoPublication;
     infoPublication.Emotion = emotions.find((e) => e.label === infoPublication.emocion) as Emotions
 
     const [contenido, setContenido] = useState(infoPublication.contenido);
+    const [nivelVacio, setNivelVacio] = useState(infoPublication.nivelVacio);
     const [emotion, setEmotion] = useState(infoPublication.Emotion);
     const [comments, setComments] = useState(infoPublication.reposts);
     const [likes, setLikes] = useState(infoPublication.likes);
@@ -46,6 +47,7 @@ export default function Card_Publication(
     const [editModalOpen, setEditModalOpen] = useState(false);
     const [isOpenDropDown, setIsOpenDropDown] = useState(false);
     const [deletedDesign, setDeletedDesign] = useState(false);
+    const [hidden, setHidden] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     const bgColor = classNames({
@@ -57,6 +59,13 @@ export default function Card_Publication(
     useEffect(() => {
       setComments(reposts);
     }, [reposts]);
+
+    // Tras eliminar, el aviso "Publicación Eliminada" se muestra un momento y luego desaparece
+    useEffect(() => {
+      if (!deletedDesign) return;
+      const timer = setTimeout(() => setHidden(true), 2500);
+      return () => clearTimeout(timer);
+    }, [deletedDesign]);
 
     useEffect(() => {
       document.addEventListener("mousedown", handleClickOutside);
@@ -145,7 +154,11 @@ export default function Card_Publication(
           }),
         });
 
-        return res.ok;
+        if (!res.ok) return false;
+        const resJSON = await res.json().catch(() => ({}));
+        // El servidor vuelve a analizar el texto editado: se actualiza el color
+        if (typeof resJSON.nivelVacio === 'string') setNivelVacio(resJSON.nivelVacio);
+        return true;
 
       } catch (error) {
         console.log(error);
@@ -180,6 +193,8 @@ export default function Card_Publication(
       return false
     };
 
+  if (hidden) return null;
+
   return (
     <>
       {commentModalOpen && <CommentModal infoCreator={infoCreator} infoPublication={infoPublication} onClickClose={(comStatus, comment) => {
@@ -196,7 +211,7 @@ export default function Card_Publication(
             setContenido(dEdit.nContent);
             setEmotion(dEdit.nEmotion)
           } else {
-            alert('No se pudo actualizar la publicación');
+            console.error('No se pudo actualizar la publicación');
           }
         }
         setEditModalOpen(false);
